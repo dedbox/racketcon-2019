@@ -4,7 +4,9 @@
          (prefix-in algebraic- (only-in algebraic/prelude $))
          pict/code
          pict/color
-         slideshow/text)
+         slideshow/play
+         slideshow/text
+         (for-syntax (only-in syntax/parse this-syntax)))
 
 (define $$ algebraic-$)
 
@@ -21,6 +23,7 @@
 
 (define emph (.. dark-orange bit))
 (define defname (.. dark-green bit))
+(define typer (.. dark-green bt))
 (define name (.. dark-red bt))
 (define attention (.. base-color it))
 (define code-comment (.. commented tt))
@@ -62,6 +65,73 @@
 (define github-logo (scale-to-fit (bitmap "github.png") (scale (t "X") 1.25)))
 (define twitter-logo (scale-to-fit (bitmap "twitter.png") (scale (t "X") 2)))
 
+(define (simple-slide title)
+  (play-n
+   #:name title
+   #:skip-first? #t
+   #:skip-last? #t
+   (fade-in-out (titlet title))))
+
+(define (simple-slide/static-title title . ps)
+  (play-n
+   #:title title
+   #:skip-first? #t
+   #:skip-last? #t
+   (fade-in-out ($$ vc-append ps))))
+
+(define (play-fade-in str . args)
+  (play
+   #:title str
+   #:skip-first? #t
+   (fade-in ($$ vc-append args))))
+
+(define (play-fade-out str . args)
+  (play
+   #:title str
+   #:skip-first? #t
+   (fade-out ($$ vc-append args))))
+
+(define (play-fade-in-out str . args)
+  ($$ play-fade-in str args)
+  (play #:title str (fade-out ($$ vc-append args))))
+
+(define (play-fade-in-title str)
+  (play
+   #:title (fade-in (titlet str))
+   #:name str
+   #:skip-first? #t
+   (λ _ (blank))))
+
+(define (play-fade-out/title str . args)
+  (play
+   #:title (fade-out (titlet str))
+   #:name str
+   (fade-out ($$ vc-append args))))
+
+(define (play-fade-in+out str . args)
+  ($$ play-fade-in str args)
+  ($$ play-fade-out str args))
+
+(define (play-fade-in+out/title str . args)
+  ($$ play-fade-in str args)
+  ($$ play-fade-out/title str args))
+
+(define (play-N str proc)
+  (play-n
+   #:title str
+   #:skip-first? #t
+   #:skip-last? #t
+   proc))
+
+;;; ----------------------------------------------------------------------------
+;;; Animation
+
+(define fade-in (φ p (>> cellophane p)))
+(define fade-out (φ p (.. (>> cellophane p) (>> - 1.0))))
+
+(define ((fade-in-out p) t1 t2)
+  ((fade-in p) (* t1 (- 1.0 t2))))
+
 ;;; ----------------------------------------------------------------------------
 ;;; Run-Time Configuration
 
@@ -69,76 +139,105 @@
 
 (get-current-code-font-size (λ () (current-font-size)))
 
+(set-page-numbers-visible! #f)
+
 ;;; ############################################################################
 
-;; (slide
-;;  (titlet "Algebraic Racket in Action")
-;;  (blank-line)
-;;  (sans (t "RacketCon 2019")))
-
-(require slideshow/play)
-
-(play (.. (>> cellophane
-              (vc-append gap-size 
-                         (titlet "Algebraic Racket in Action")
-                         (blank-line)
-                         (sans (t "RacketCon 2019"))))
-          (>> - 1.0)))
+(play-n
+ #:name "Algebraic Racket in Action"
+ #:skip-first? #t
+ #:skip-last? #t
+ (fade-in-out
+  (vc-append gap-size 
+             (titlet "Algebraic Racket in Action")
+             (blank-line)
+             (sans (t "RacketCon 2019")))))
 
 ;;; ============================================================================
 
+(simple-slide "Racket is ...")
+
 (define a-dialect-for
-  (list (para #:fill? #f "A" (name "dialect") "for")
-        (para #:fill? #f (emph "optimal") "programming" (emph "experience"))))
+  (vc-append
+   gap-size
+   (para #:fill? #f "A" (name "dialect") "for")
+   (para #:fill? #f (emph "optimal") "programming" (emph "experience"))))
 
 (define programming-is-flow-control
-  (list (para #:fill? #f "Programming" (defname "is") "flow control")))
+  (vc-append gap-size
+             (blank-line)
+             (blank-line)
+             (para #:fill? #f "Programming" (defname "is") (emph "flow") "control")))
 
 (define the-flow-book
   (frame (scale-to-fit (bitmap "./flow-book.jpg") (scale full-page 1/2))))
 
-($$ slide #:title "Algebraic Racket is ..."
-    (list 'alts
-          (list ($$ list `(next
-                           ,@a-dialect-for
-                           next
-                           ,(blank-line)
-                           ,(blank-line)
-                           ,@programming-is-flow-control))
-                (list (hc-append (* 5 gap-size)
-                                 ($$ vc-append gap-size
-                                     `(,@a-dialect-for
-                                       ,(blank-line)
-                                       ,(blank-line)
-                                       ,@programming-is-flow-control))
-                                 the-flow-book)))))
+;;; ----------------------------------------------------------------------------
+
+(play-fade-in-title "Algebraic Racket is ...")
+
+;;; ----------------------------------------------------------------------------
+
+(play-N
+ "Algebraic Racket is ..."
+ (λ (t1 t2)
+   (hc-append (* 5 gap-size)
+              (vc-append ((fade-in a-dialect-for) t1)
+                         (blank-line)
+                         (blank-line)
+                         ((fade-in programming-is-flow-control) t2))
+              ((fade-in the-flow-book) t2))))
+
+(play-fade-out/title
+ "Algebraic Racket is ..."
+ (hc-append (* 5 gap-size)
+            (vc-append a-dialect-for
+                       (blank-line)
+                       (blank-line)
+                       programming-is-flow-control)
+            the-flow-book))
 
 ;;; ............................................................................
 
-(slide
+(play-fade-in-title "The Big Idea")
+
+(play-n
  #:title "The Big Idea"
- 'next
- (t "1. Types describe interesting structures")
- 'next
+ #:skip-last? #t
+ (λ (t1 t2 t3)
+   (vc-append
+    ((fade-in (para #:fill? #f "1." (typer "Types")
+                    "describe interesting" (name "structures"))) t1)
+    (blank-line)
+    (blank-line)
+    ((fade-in (para #:fill? #f "2." (name "Structures")
+                    "are useful without" (typer "types"))) t2)
+    (blank-line)
+    (blank-line)
+    ((fade-in (para (bit "Programming should be fun. Programs should be beautiful."))) t3))))
+
+(play-fade-out/title
+ "The Big Idea"
+ (para #:fill? #f "1." (typer "Types") "describe interesting" (name "structures"))
  (blank-line)
  (blank-line)
- (t "2. Structures are useful without types")
- 'next
+ (para #:fill? #f "2." (name "Structures") "are useful without" (typer "types"))
  (blank-line)
  (blank-line)
- (para (it "Programming should be fun. Programs should be beautiful.")))
+ (para (bit "Programming should be fun. Programs should be beautiful.")))
 
 ;;; ............................................................................
 
-(slide (titlet "Think Structurally"))
+(simple-slide "Think Structurally")
 
 ;;; ............................................................................
 
-(slide
- #:title "Think Structurally"
- #:timeout 1.5
- 'alts
- (list (list (code ⋮)
+(play-fade-in-title "Think Structurally")
+
+(play-N
+ "Think Structurally"
+ (fade-in-out
+  (vc-append (code ⋮)
              (code (define app1
                      (function
                        [(App t1 t2)
@@ -151,8 +250,12 @@
                         (let ([t2* (step t2)])
                           (and t2* (App v1 t2*)))]
                        [_ #f])))
-             (code ⋮))
-       (list (code ⋮)
+             (code ⋮))))
+
+(play-N
+ "Think Structurally"
+ (fade-in-out
+  (vc-append (code ⋮)
              (code (define app1 (function
                                   [(App t1 t2) (let ([t1* (step t1)])
                                                  (and t1* (App t1* t2)))]
@@ -161,28 +264,33 @@
                                   [(App v1 t2) (let ([t2* (step t2)])
                                                  (and t2* (App v1 t2*)))]
                                   [_ #f])))
-             (code ⋮))
-       (parameterize ([get-current-code-font-size
-                       (λ () (round (* (current-font-size) 5/7)))])
-         (list (code ⋮)
-               (code (define app1 (function [(App t1 t2) (let ([t1* (step t1)]) (and t1* (App t1* t2)))] [_ #f]))
-                     (define app2 (function [(App v1 t2) (let ([t2* (step t2)]) (and t2* (App v1 t2*)))] [_ #f])))
-               (code ⋮)))))
+             (code ⋮))))
 
-;;; ............................................................................
+(play-N
+ "Think Structurally"
+ (parameterize ([get-current-code-font-size
+                 (λ () (round (* (current-font-size) 5/7)))])
+   (fade-in-out
+    (vc-append
+     (code ⋮)
+     (code
+      (define app1 (function [(App t1 t2) (let ([t1* (step t1)]) (and t1* (App t1* t2)))] [_ #f]))
+      (define app2 (function [(App v1 t2) (let ([t2* (step t2)]) (and t2* (App v1 t2*)))] [_ #f])))
+     (code ⋮)))))
 
-(slide
- #:title "Think Structurally"
+(play-fade-in+out/title
+ "Think Structurally"
  (code (define-steps
          ⋮
          [app1 (App t1 t2) (sub-step t1 t1* (App t1* t2))]
          [app2 (App v1 t2) (sub-step t2 t2* (App v1 t2*))]
          ⋮)))
 
-;;; ............................................................................
+;;; ============================================================================
 
 (define prelude-long-names
-  (vc-append (code curry)
+  (vc-append (code apply)
+             (code curry)
              (code curryr)
              (code values)
              (code cons)
@@ -193,8 +301,9 @@
              (code disjoin)))
 
 (define prelude-short-names
-  (vl-append (code (code:line >> (code:comment "or >>*")))
-             (code (code:line << (code:comment "or <<*")))
+  (vl-append (code $)
+             (code >>)
+             (code <<)
              (code id)
              (code ::)
              (code ::*)
@@ -203,22 +312,34 @@
              (code &&)
              (code ||)))
 
-(slide (titlet "Prelude"))
+(play-fade-in-title "Common Functions")
+
+(play-N
+ "Common Functions"
+ (λ (t1 t2)
+   (ht-append ((fade-in prelude-long-names) t1)
+              (blank (* 10 gap-size) 0)
+              ((fade-in prelude-short-names) t2))))
+
+(play-fade-out/title
+ "Common Functions"
+ (ht-append prelude-long-names
+            (blank (* 10 gap-size) 0)
+            prelude-short-names))
 
 ;;; ............................................................................
 
-(slide
- #:title "Common Function Aliases"
- 'alts
- (list (list prelude-long-names)
-       (list (ht-append prelude-long-names
-                        (blank (* 10 gap-size) 0)
-                        prelude-short-names))))
+(play-fade-in-title "Composed-Curry Totem")
 
-;;; ............................................................................
+(play-fade-in-out
+ "Composed-Curry Totem"
+ (code (.. (>> $ id)
+           (>> map add1)
+           (>> map syntax-e)
+           list)))
 
-(slide
- #:title "Composed Curry Totem"
+(play-fade-in+out/title
+ "Composed-Curry Totem"
  (code ((.. (>> $ id)
             (>> map add1)
             (>> map syntax-e)
@@ -227,475 +348,989 @@
 
 ;;; ............................................................................
 
-(slide
- #:title "Growing a Totem"
- #:timeout 1.5
- 'alts
- (list (list (code #'(1 2 3))
-             (blank-line)
-             (code-comment "#<syntax (1 2 3)>"))
-       (list (code (syntax-e #'(1 2 3)))
-             (blank-line)
-             (code-comment "'(#<syntax 1> #<syntax 2> #<syntax 3>)"))
-       (list (code (map syntax-e (syntax-e #'(1 2 3))))
-             (blank-line)
-             (code-comment "'(1 2 3)"))
-       (list (code (map add1 (map syntax-e (syntax-e #'(1 2 3)))))
-             (blank-line)
-             (code-comment "'(2 3 4)"))
-       (list (code ($ id (map add1 (map syntax-e (syntax-e #'(1 2 3))))))
-             (blank-line)
-             (code-comment "2")
-             (code-comment "3")
-             (code-comment "4"))))
+(play-fade-in-title "Growing a Totem")
 
-;;; ............................................................................
-
-(slide
- #:title "Growing a Totem"
- #:timeout 1.5
- 'alts
- (list (list (code ($ id (map add1 (map syntax-e (syntax-e #'(1 2 3)))))))
-       (list (code ((>> $ id)
-                    (map add1 (map syntax-e (syntax-e #'(1 2 3)))))))
-       (list (code ((.. (>> $ id)
-                        (>> map add1))
-                    (map syntax-e (syntax-e #'(1 2 3))))))
-       (list (code ((.. (>> $ id)
-                        (>> map add1)
-                        (>> map syntax-e))
-                    (syntax-e #'(1 2 3)))))
-       (list (code ((.. (>> $ id)
-                        (>> map add1)
-                        (>> map syntax-e)
-                        list)
-                    #'1 #'2 #'3)))))
-
-;;; ............................................................................
-
-(slide
- #:title "Growing a Totem"
- (code (define args+1->values
-         (.. (>> $ id)
-             (>> map add1)
-             (>> map syntax-e)
-             list))
-       (args+1->values #'1 #'2 #'3)))
-
-;;; ............................................................................
-
-(slide
- #:title "Conjunctions and Disjunctions"
- (para (code (define (syntax-singleton? x)
-               ((|| (&& syntax?
-                        (.. syntax-singleton? syntax-e))
-                    (&& pair?
-                        (.. syntax? car)
-                        (.. null? cdr)))
-                x))))
+(simple-slide/static-title
+ "Growing a Totem"
+ (code (syntax-e #'(1 2 3)))
  (blank-line)
- (para (code (code:line (syntax-singleton? #'(1)) (code:comment "↝ #t"))
-             (code:line (syntax-singleton? #'1) (code:comment "↝ #f")))))
+ (code-comment "'(#<syntax 1> #<syntax 2> #<syntax 3>)"))
+
+(simple-slide/static-title
+ "Growing a Totem"
+ (code (map syntax-e (syntax-e #'(1 2 3))))
+ (blank-line)
+ (code-comment "'(1 2 3)"))
+
+(simple-slide/static-title
+ "Growing a Totem"
+ (code (map add1 (map syntax-e (syntax-e #'(1 2 3)))))
+ (blank-line)
+ (code-comment "'(2 3 4)"))
+
+(simple-slide/static-title
+ "Growing a Totem"
+ (code ($ id (map add1 (map syntax-e (syntax-e #'(1 2 3))))))
+ (blank-line)
+ (code-comment "2")
+ (code-comment "3")
+ (code-comment "4"))
+
+;;; ............................................................................
+
+(simple-slide/static-title
+ "Growing a Totem"
+ (code ($ id (map add1 (map syntax-e (syntax-e #'(1 2 3)))))))
+
+(simple-slide/static-title
+ "Growing a Totem"
+ (code ((>> $ id)
+        (map add1 (map syntax-e (syntax-e #'(1 2 3)))))))
+
+(play-fade-in+out
+ "Growing a Totem"
+ (code ((>> $ id)
+        ((>> map add1)
+         (map syntax-e (syntax-e #'(1 2 3)))))))
+
+(play-fade-in+out
+ "Growing a Totem"
+ (code ((>> $ id)
+        ((>> map add1)
+         ((>> map syntax-e)
+          (syntax-e #'(1 2 3)))))))
+
+(play-fade-in+out
+ "Growing a Totem"
+ (code ((>> $ id)
+        (>> map add1)
+        (.. (>> map syntax-e))
+        (syntax-e #'(1 2 3)))))
+
+(play-fade-in+out
+ "Growing a Totem"
+ (code ((>> $ id)
+        (.. (>> map add1)
+            (>> map syntax-e))
+        (syntax-e #'(1 2 3)))))
+
+(simple-slide/static-title
+ "Growing a Totem"
+ (code ((.. (>> $ id)
+            (>> map add1)
+            (>> map syntax-e))
+        (syntax-e #'(1 2 3)))))
+
+(simple-slide/static-title
+ "Growing a Totem"
+ (code ((.. (>> $ id)
+            (>> map add1)
+            (>> map syntax-e)
+            list)
+        #'1 #'2 #'3)))
+
+;;; ----------------------------------------------------------------------------
+
+(play-fade-in-title "A New Beginning")
+
+(play-fade-in+out/title
+ "A New Beginning"
+ (para #:fill? #f "Racket is a" (attention "programming language")))
+
+(play-n
+ #:name "A New Beginning"
+ #:skip-first? #t
+ #:skip-last? #t
+ (fade-in-out
+  (dark-gray (vl-append gap-size
+                        (t "Before one studies macros,")
+                        (t "code is code and data is data.")))))
 
 ;;; ============================================================================
 
-(slide
- #:title "A New Beginning"
- (para #:fill? #f "Racket is a" (attention "programming language"))
- (blank-line)
- (blank-line)
- (dark-gray (t "Code is code, and data is data.")))
+(simple-slide "The Call to Adventure")
 
 ;;; ============================================================================
 
-(slide
- #:title "The Call to Adventure"
- 'next
- (t "What Is Language-Oriented Programming?")
- 'next
- (blank-line)
- (alert "MAGIC"))
+(play-fade-in-title "The Call to Adventure")
+
+(play-N
+ "The Call to Adventure"
+ (λ (t1 t2 t3)
+   (vc-append ((fade-in-out (t "What Is Language-Oriented Programming?")) t1 t3)
+              (blank-line)
+              ((fade-in-out (alert "MAGIC")) t2 t3))))
 
 ;;; ............................................................................
 
-(slide
- #:title "The Call to Adventure"
+(play-N
+ "The Call to Adventure"
+ (λ (t1 t2 t3)
+   (vc-append
+    ((fade-in (t "How Do I Make Racket Work for Me?")) t1)
+    (blank-line)
+    (cc-superimpose
+     ((fade-in-out (para #:fill? #f "Algebraic Data" (typer "Types     "))) t2 t3)
+     ((fade-in     (para #:fill? #f "Algebraic Data" (name  "Structures"))) t3)))))
+
+(play-fade-out/title
+ "The Call to Adventure"
  (t "How Do I Make Racket Work for Me?")
- 'next
  (blank-line)
- 'alts
- (list (list (t "Algebraic Data Types     "))
-       (list (para #:fill? #f "Algebraic Data" (dark-red (t "Structures"))))))
+ (para #:fill? #f "Algebraic Data" (name  "Structures")))
 
 ;;; ............................................................................
 
-(slide
+(define equiv-derived-classes
+  (ht-append
+   (* 8 gap-size)
+   (vl-append (item #:fill? #f "complete" (dark-gray implies) (name "Eq"))
+              (item #:fill? #f "ordered" (dark-gray implies) (name "Ord")))
+   (vl-append (item #:fill? #f "parsable" (dark-gray implies) (name "Read"))
+              (item #:fill? #f "printable" (dark-gray implies) (name "Show")))))
+
+(define data-predicates
+  (vl-append (* 2 gap-size)
+             (code (data Playback (Reset Pause Unpause Zoom Pan)
+                         Viewport (Zoom Pan)))
+             (code (let ([input (sync ch)])
+                     (cond
+                       [((sum Playback?) input) (playback-handler input)]
+                       [(Zoom? input) (zoom-handler input)]
+                       [(Pan? Input) (pan-handler input)])))))
+
+(define data-to-list
+  (code (data->list (Zoom 'in 2.5)) (code:comment "'(Zoom in 2.5)")))
+
+(play-fade-in-title "Algebraic Data")
+
+(play-N
+ "Algebraic Data"
+ (λ (t1 t2)
+   (vl-append
+    gap-size
+    ((fade-in
+      (vl-append gap-size
+                 (para #:fill? #f "A" (defname "sum")
+                       "is like a list of" (attention "product") "names")
+                 (blank)
+                 (ht-append (* 4 gap-size)
+                            (code (code:comment "Data")
+                                  (data Unit (Unit)
+                                        Maybe (Nothing Just)))
+                            (code (code:comment "Sums")
+                                  (sum Unit)
+                                  (sum Maybe))))) t1)
+    (blank)
+    ((fade-in
+      (vl-append gap-size
+                 (para #:fill? #f "A" (defname "product")
+                       "is like a list of unnamed" (attention "fields"))
+                 (blank)
+                 (ht-append (* 6 gap-size)
+                            (code (code:comment "Constructors")
+                                  Unit
+                                  Nothing)
+                            (code (code:comment "Instances")
+                                  (Unit)
+                                  (Just 'something))))) t2))))
+
+(play
  #:title "Algebraic Data"
- #:layout 'top
- 'next
- (para #:fill? #f "A" (defname "sum") "is an enumeration of" (defname "product constructors"))
- 'next
- (blank-line)
- (code (data Void ())
-       (data Unit (Unit))
-       (data Maybe (Nothing Just)))
- 'next
- (blank-line)
- (ht-append
-  (* 8 gap-size)
-  (vl-append (item #:fill? #f "complete" (dark-gray implies) (name "Eq"))
-             (item #:fill? #f "ordered" (dark-gray implies) (name "Ord")))
-  (vl-append (item #:fill? #f "parsable" (dark-gray implies) (name "Read"))
-             (item #:fill? #f "printable" (dark-gray implies) (name "Show")))))
+ (fade-out
+  (vl-append
+   gap-size
+   (para #:fill? #f "A" (defname "sum")
+         "is like a list of" (attention "product") "names")
+   (blank)
+   (ht-append (* 4 gap-size)
+              (code (code:comment "Data")
+                    (data Unit (Unit)
+                          Maybe (Nothing Just)))
+              (code (code:comment "Sums")
+                    (sum Unit)
+                    (sum Maybe)))
+   (blank)
+   (vl-append gap-size
+              (para #:fill? #f "A" (defname "product")
+                    "is like a list of unnamed" (attention "fields"))
+              (blank)
+              (ht-append (* 6 gap-size)
+                         (code (code:comment "Constructors")
+                               Unit
+                               Nothing)
+                         (code (code:comment "Instances")
+                               (Unit)
+                               (Just 'something)))))))
+
+(play-fade-in-out
+ "Algebraic Data"
+ (vl-append (* 2 gap-size)
+            (code (data A-D (A B C D)))
+            (code (sort (list D C B D A) data-less-than?))
+            (code (code:comment "'(A B C D D)"))))
+
+(play-fade-in+out/title
+ "Algebraic Data"
+ equiv-derived-classes)
 
 ;;; ............................................................................
 
-(slide
- #:title "Data Leads to Functions"
- 'next
- (code (data VizCommand ((code:comment "run-time state")
-                         Dump Load Reset Pause Unpause Zoom Pan
-                         (code:comment "nodes")
-                         Node Set Add Drop
-                         (code:comment "edges")
-                         Edge Update Connect Disconnect)
-             VizResult (FAIL OK))))
+(simple-slide "Data Leads to Functions")
 
 ;;; ............................................................................
 
-(slide
- #:title "Data Leads to Functions"
- (parameterize ([get-current-code-font-size (λ () (round (* (current-font-size) 3/5)))])
-   (code
-    (define/public command
-      (function
-        (code:comment "run-time environment")
-        [Dump (get-state)]
-        [(Load state) (set-state state)]
-        [Reset (reset!)]
-        [Pause (set! paused? #t) (OK)]
-        [Unpause (set! paused? #f) (OK)]
-        [(Zoom 'in) (zoom Δzoom) (OK)]
-        [(Zoom 'out) (zoom (- Δzoom)) (OK)]
-        [(Pan Δx Δy) (pan Δx Δy)]
-        (code:comment "nodes")
-        [(Node name) (get-node name)]
-        [(Set name proc pos) (set-node name proc pos)]
-        [(Add name proc pos) (add-node name proc pos)]
-        [(Drop name) (drop-node name)]
-        (code:comment "edges")
-        [(Edge from-node to-node) (get-edge from-node to-node)]
-        [(Update from-node to-node proc) (set-edge from-node to-node proc)]
-        [(Connect from-node to-node proc) (add-edge from-node to-node proc)]
-        [(Disconnect from-node to-node) (drop-edge from-node to-node)]
-        (code:comment "else")
-        [_ FAIL])))))
+;; (define viz-data
+;;   (code (data VizCommand ((code:comment "run-time state")
+;;                           Dump Load Reset Pause Unpause Zoom Pan
+;;                           (code:comment "nodes")
+;;                           Node Set Add Drop
+;;                           (code:comment "edges")
+;;                           Edge Update Connect Disconnect)
+;;               VizResult (FAIL OK))))
+
+(define viz-command-handler
+  (code
+   (define/public command
+     (function
+      ⋮
+      [Reset           (reset!)           OK]
+      [Pause           (set! paused? #t)  OK]
+      [Unpause         (set! paused? #f)  OK]
+      [(Zoom 'in Δz)   (zoom Δz)          OK]
+      [(Zoom 'out Δz)  (zoom (- Δz))      OK]
+      [(Pan Δx Δy)     (pan Δx Δy)        OK]
+      ⋮
+      [_ FAIL]))))
+
+(define define-http-request-parser
+  (vl-append (* 2 gap-size)
+             (code (data HttpRequest (GET PUT POST)))
+             (code (define parse-HttpRequest
+                     (φ (#rx"^([^ ]+) ([^ ]+) HTTP/([^\r\n]+)"
+                         (#rx"^(?:GET|PUT|POST)$"    method)
+                         (#rx"^([^?]+)(?:\\?(.*))?$" uri-path uri-params)
+                         (#rx"^[0-9]\\.[0-9]$"       http-version))
+                       ((eval (read (open-input-string method))
+                              (variable-reference->namespace
+                               (#%variable-reference parse-HttpRequest)))
+                        uri-path uri-params http-version))))))
+
+(define use-http-request-parser
+  (code (parse-HttpRequest "GET /r/s?q=123&p=4 HTTP/1.0\r\n\r\n")
+        (code:comment "(GET \"/r/s\" \"q=123&p=4\" \"1.0\")")))
+
+(play-fade-in-title "Data Leads to Functions")
+
+;; (play-fade-in-out
+;;  "Data Leads to Functions"
+;;  viz-data)
+
+(play-fade-in-out
+ "Data Leads to Functions"
+ viz-command-handler)
+
+(play-N
+ "Data Leads to Functions"
+ (λ (t1 t2)
+   (vl-append (* 2 gap-size)
+              ((fade-in define-http-request-parser) t1)
+              ((fade-in use-http-request-parser) t2))))
+
+(play-fade-out/title
+ "Data Leads to Functions"
+ (vl-append (* 2 gap-size)
+            define-http-request-parser
+            use-http-request-parser))
 
 ;;; ............................................................................
 
-(slide
- #:title "Data Leads to Functions"
- (code (send surface Pause))
- (blank-line)
- (code (send surface (Zoom 'in)))
- (blank-line)
- (code (send surface (Add 'node1 (λ (canvas) …) #f))))
+(simple-slide "Functions Lead to Macros")
 
 ;;; ............................................................................
 
-(slide
- #:title "Functions Lead to Macros"
- 'next
- (code (define-syntax event-let
-         (μ* (([var:id evt] ...+) body-evt ...+)
-           (bind evt ... (λ (var ...) (seq body-evt ...)))))))
+(define use-event-let
+  (code (event-let ([a (event 1)]
+                    [b (event 2)]
+                    [c (event 3)])
+          (+ a b c)) (code:comment "↝ 6")))
+
+(define def-event-let
+  (code (define-syntax event-let
+          (μ* (([x:id evt] ...+) body ...+)
+            (sync (handle-evt (list-evt evt ...)
+                              (λ (x ...) body ...)))))))
+
+(define use-event-let*
+  (code (event-let* ([a (event 1)]
+                     [b (event (+ a 2))]
+                     [c (event (+ b 3))])
+          c) (code:comment "↝ 6")))
+
+(define def-event-let*
+  (code (define-syntax event-let*
+          (macro*
+            [(() body ...+) (begin body ...)]
+            [(([x:id evt] . rest) body ...+)
+             (sync (handle-evt evt (φ x (event-let* rest body ...))))]))))
+
+(play-fade-in-title "Functions Lead to Macros")
+
+(play-N
+ "Functions Lead to Macros"
+ (λ (t1 t2 t3)
+   ((fade-out (vl-append (* 2 gap-size)
+                         ((fade-in use-event-let) t1)
+                         ((fade-in def-event-let) t2)))
+    t3)))
+
+(play-fade-in
+ "Functions Lead to Macros"
+ (vl-append (* 2 gap-size)
+            use-event-let*
+            (ghost def-event-let*)))
+
+(play-N
+ "Functions Lead to Macros"
+ (λ (t1)
+   (vl-append (* 2 gap-size)
+              use-event-let*
+              ((fade-in def-event-let*) t1))))
+
+(play-fade-out/title
+ "Functions Lead to Macros"
+ (vl-append (* 2 gap-size)
+            use-event-let*
+            def-event-let*))
 
 ;;; ............................................................................
 
-(slide
- #:title "Functions Lead to Macros"
- (code (define-syntax event-let*
-         (macro*
-           [(() body-evt ...+) (seq body-evt ...)]
-           [(([var:id evt] . bindings) body-evt ...+)
-            (bind evt (φ x (event-let* bindings body-evt ...)))]))))
+(simple-slide "Macros Lead to Suffering")
 
 ;;; ............................................................................
 
 (get-current-code-font-size (λ () (round (* (current-font-size) 5/6))))
 
-(slide
- #:title "Macros Lead to Suffering"
- 'next
- 'alts
- (list
-  (list (code
-         (define-syntax with-instance
-           (macro*
-             [(instance-id:id expr ...+)
-              (with-instance [|| instance-id] expr ...)]
-             [([prefix:id instance-id:id] expr ...+)
-              #:if (instance-id? #'instance-id)
-              #:do [(define members (instance-members #'instance-id))
-                    (define ids (map car members))]
-              #:with (id ...) ids
-              #:with (id/prefix ...) (map (prepend this-syntax #'prefix) ids)
-              #:with (def ...) (map cadr members)
-              (letrec-values ([(id/prefix ...)
-                               (letrec-syntax ([id (μ0 def)] ...)
-                                 (values id ...))])
-                expr ...)]))))
+(define broken-with-instance
+  (code
+   (define-syntax with-instance
+     (macro*
+       [(instance-id:id expr ...+)
+        (with-instance [|| instance-id] expr ...)]
+       (code:line)
+       [([prefix:id instance-id:id] expr ...+)
+        #:if (instance-id? #'instance-id)
+        #:do [(define ids …)]
+        #:with (id ...) ids
+        #:with (def ...) …
+        #:with (id/prefix ...) …
+        (letrec-values ([(id/prefix ...)
+                         (letrec-syntax ([id (μ0 def)] ...)
+                           (values id ...))])
+          expr ...)]))))
 
-  (list (CODE
-         (define-syntax with-instance
-           (macro*
-             [(instance-id:id expr ...+)
-              #,((UNSYNTAX (highlight (code replace-context this-syntax)))
-                 #'(with-instance [|| instance-id] expr ...))]
-             [([prefix:id instance-id:id] expr ...+)
-              #:if (instance-id? #'instance-id)
-              #:do [(define members (instance-members #'instance-id))
-                    (define ids (map car members))
-                    (UNSYNTAX (highlight (code (define re-context (>> replace-context this-syntax)))))]
-              #:with (id ...) ((UNSYNTAX (highlight (code map re-context))) ids)
-              #:with (id/prefix ...) (map (prepend this-syntax #'prefix) ids)
-              #:with (def ...) (map ((UNSYNTAX (highlight (code .. re-context))) cadr) members)
-              (letrec-values ([(id/prefix ...)
-                               (letrec-syntax ([id (μ0 def)] ...)
-                                 (values id ...))])
-                expr ...)]))))))
+(define patched-with-instance
+  (CODE
+   (define-syntax with-instance
+     (macro*
+       [(instance-id:id expr ...+)
+        #,((UNSYNTAX (highlight (code replace-context this-syntax)))
+           #'(with-instance [|| instance-id] expr ...))]
+       (code:line)
+       [([prefix:id instance-id:id] expr ...+)
+        #:if (instance-id? #'instance-id)
+        #:do [(define ids …)
+              (UNSYNTAX (highlight (code (define re-context (>> replace-context this-syntax)))))]
+        #:with (id ...) ((UNSYNTAX (highlight (code map re-context))) ids)
+        #:with (def ...) (map ((UNSYNTAX (highlight (code .. re-context))) cadr) …)
+        #:with (id/prefix ...) …
+        (letrec-values ([(id/prefix ...)
+                         (letrec-syntax ([id (μ0 def)] ...)
+                           (values id ...))])
+          expr ...)]))))
+
+(define fixed-with-instance
+  (CODE
+   (define-syntax with-instance
+     (macro*
+       [(instance-id:id body ...+)
+        #,((UNSYNTAX (highlight (CODE #%rewrite this-syntax)))
+            `(with-instance [|| ,#'instance-id] (UNSYNTAX (tt ".")) ,#'(body ...)))]
+       (code:line)
+       [([prefix:id instance-id:id] body ...+)
+        #:if (instance-id? #'instance-id)
+        #:do [(define ids …)]
+        #:with (id ...) ids
+        #:with (def ...) …
+        #:with (id/prefix ...) …
+        (let-values ([(id/prefix ...)
+                      ((UNSYNTAX (highlight (code syntax-parameterize))) ([id (μ0 def)] ...)
+                        (values id ...))])
+          body ...)]))))
+
+(play-fade-in-title "Macros Lead to Suffering")
+
+(play-fade-in-out
+ "Macros Lead to Suffering"
+ broken-with-instance)
+
+(play-fade-in+out/title
+ "Macros Lead to Suffering"
+ patched-with-instance)
 
 (get-current-code-font-size (λ () (current-font-size)))
 
-;;; ============================================================================
-
-(slide
- #:title "The Inmost Cave"
- (para #:fill? #f "Racket is a" (attention "meta-programming language"))
- (blank-line)
- (blank-line)
- (dark-gray (t "Code is not code, and data is not data.")))
+(play-fade-in+out/title
+ "Macros Lead to Suffering"
+ fixed-with-instance)
 
 ;;; ============================================================================
 
-(slide
- #:title "An Ordeal"
- 'next
- (t "What Is Language-Oriented Programming?")
- 'next
- (blank-line)
- (alert "EXHAUSTING"))
+(define racket-is-a-meta-programming-language
+  (para #:fill? #f "Racket is a" (attention "meta-programming language")))
 
-(slide
- #:title "An Ordeal"
- (t "How Do I Stop Working for Racket?")
- 'next
- (blank-line)
- 'alts
- (list (list (t "     Type Classes"))
-       (list (para #:fill? #f (dark-red (t "Structure")) "Classes"))))
+(define code-is-not-code/data-is-not-data
+  (dark-gray
+   (vl-append gap-size
+              (t "After a glimpse at the truth of macros,")
+              (t "code is not code and data is not data."))))
+
+(play-fade-in-title "The Inmost Cave")
+
+(play-fade-in+out/title
+ "The Inmost Cave"
+ racket-is-a-meta-programming-language)
+
+(play-n
+ #:name "The Inmost Cave"
+ #:skip-first? #t
+ #:skip-last? #t
+ (fade-in-out code-is-not-code/data-is-not-data))
 
 ;;; ............................................................................
 
-(define the-monad-class
-  (parameterize ([get-current-code-font-size (λ () (round (* (current-font-size) 5/6)))])
+(play-fade-in-title "An Ordeal")
+
+(play-N
+ "An Ordeal"
+ (λ (t1 t2 t3)
+   (vc-append ((fade-in-out (t "What Is Language-Oriented Programming?")) t1 t3)
+              (blank-line)
+              ((fade-in-out (alert "EXHAUSTING")) t2 t3))))
+
+(define how-do-I-stop-working
+  (t "How Do I Stop Working for Racket?"))
+
+(play-N
+ "An Ordeal"
+ (λ (t1 t2 t3)
+   (vc-append ((fade-in how-do-I-stop-working) t1)
+              (blank-line)
+              (para #:fill? #f
+                    ((fade-in (cc-superimpose
+                               ((fade-in-out (typer "     Type")) t2 t3)
+                               ((fade-in     (name  "Structure")) t3)))
+                     t2)
+                    ((fade-in (t "Classes")) t2)))))
+
+(play-fade-out/title
+ "An Ordeal"
+ (vc-append how-do-I-stop-working
+            (blank-line)
+            (para #:fill? #f (name  "Structure") "Classes")))
+
+;;; ............................................................................
+
+(play-fade-in-title "Algebraic Classes")
+
+(play-fade-in-out
+ "Algebraic Classes"
+ (vc-append
+  (* 4 gap-size)
+  (para #:fill? #f "A" (defname "class") "is a collection of" (emph "names"))
+  (parameterize
+      ([get-current-code-font-size (λ () (round (* (current-font-size) 5/6)))])
     (code (class Monad
             [>>=]
-            [>>M (λ (m k) (>>= m (λ _ k)))]
-            [return pure]
-            [fail error]
-            minimal ([>>=])))))
+            [>>M …]
+            [return …]
+            [fail …]
+            minimal ([>>=]))))))
 
-(define the-maybe-monad
-  (parameterize ([get-current-code-font-size (λ () (round (* (current-font-size) 5/6)))])
+(play-fade-in-out
+ "Algebraic Classes"
+ (vc-append
+  (* 4 gap-size)
+  (para #:fill? #f "An" (defname "instance") "is a collection of" (emph "bindings"))
+  (parameterize
+      ([get-current-code-font-size (λ () (round (* (current-font-size) 5/6)))])
     (code (define-syntax MaybeMonad
             (instance Monad
-              [return Just]
-              [>>= (function*
-                     [((Just x) k) (k x)]
-                     [( Nothing _) Nothing])]
-              [fail (φ _ Nothing)])))))
+              extends (MaybeApplicative)
+              [return …]
+              [>>= …]
+              [fail …]))))))
 
-(define maybe-monad-examples
-  (parameterize ([get-current-code-font-size (λ () (round (* (current-font-size) 5/6)))])
-    (code (with-instance MaybeMonad (>>= (Just 2) (.. return add1))) (code:comment "↝ (Just 3)")
-          (with-instance MaybeMonad (>>=  Nothing (.. return add1))) (code:comment "↝ Nothing"))))
-
-(slide
- #:title "Algebraic Classes"
- 'next
- (para #:fill? #f "A" (defname "class") "is a collection of names")
- 'next
- (blank-line)
- 'alts
- (list (list the-monad-class)
-       (list (ht-append (* 4 gap-size)
-                        the-monad-class
-                        the-maybe-monad))
-       (list (ht-append (* 4 gap-size)
-                        the-monad-class
-                        the-maybe-monad)
-             (blank-line)
-             maybe-monad-examples)))
+(play-fade-in+out/title
+ "Algebraic Classes"
+ (vc-append
+  (* 4 gap-size)
+  (para #:fill? #f "Classes and instances are" (emph "lexically scoped"))
+  (parameterize
+      ([get-current-code-font-size (λ () (round (* (current-font-size) 5/6)))])
+    (vl-append
+     gap-size
+     (code (with-instance MaybeMonad
+             (>>= (Just 2) (.. return add1))) (code:comment "↝ (Just 3)"))
+     (code (with-instance MaybeMonad
+             (>>=  Nothing (.. return add1))) (code:comment "↝ Nothing"))))))
 
 ;;; ............................................................................
 
-(slide
- #:title "Algebraic Classes: Do-Notation"
- 'next
- (code (with-instance ListMonad
-         (do (x) <- '(1 2)
-             (y) <- '(A B)
-             (return x y))) (code:comment "↝ '(1 A 1 B 2 A 2 B)"))
- 'next
- (blank-line)
- (code (with-instance ValuesMonad
-         (do (x '! . y) <- (λ () (id 1 '! 2))
-             zs <- (λ () (id 'A 'B))
-             (return x y zs))) (code:comment "↝ 1 '(2) '(A B)")))
+(play-fade-in-title "Do-Notation")
+
+(play-fade-in-out
+ "Do-Notation"
+ (vl-append gap-size
+            (code (with-instance ListMonad
+                    (do (x) <- '(1 2)
+                        (y) <- '(A B)
+                        (return x y))))
+            (code (code:comment "↝ '(1 A 1 B 2 A 2 B)"))))
+
+(play-fade-in+out/title
+ "Do-Notation"
+ (vl-append gap-size
+            (code (with-instance ValuesMonad
+                    (lazy-do (x . ys) <- (id 1 2 3)
+                             (return x ys))))
+            (code (code:comment "↝ 1 '(2 3)"))))
 
 ;;; ............................................................................
 
-(slide
+;; (simple-slide "Truthiness")
+
+;; (play-fade-in-title "Truthiness")
+
+;; (play-fade-in-out
+;;  "Truthiness"
+;;  (code (define (world-server max-fps)
+;;          (define agents (make-hash))
+;;          (define next-key 1)
+;;          (code:line)
+;;          (define (start-agent initial-state)
+;;            (hash-set! agents next-key initial-state)
+;;            (begin0 next-key
+;;              (set! next-key (add1 next-key))))
+;;          (code:line)
+;;          (define (get-state key)
+;;            (and (hash-has-key? agents key)
+;;                 (hash-ref agents key)))
+;;          (code:line)
+;;          ⋮ )))
+
+;; (play-fade-in-out
+;;  "Truthiness"
+;;  (vl-append gap-size
+;;             (code (define agents (make-hash))
+;;                   (define next-key 1))
+;;             (code (define (start-agent initial-state)
+;;                     (hash-set! agents next-key initial-state)
+;;                     (begin0 next-key
+;;                       (set! next-key (add1 next-key)))))))
+
+;; (play-fade-in-out
+;;  "Truthiness"
+;;  (code (define (get-state key)
+;;          (and (hash-has-key? agents key)
+;;               (hash-ref agents key)))))
+
+;; (play-N
+;;  "Truthiness"
+;;  (λ (t1 t2 t3)
+;;    (vl-append
+;;     gap-size
+;;     ((fade-in (code (start-agent #f) (code:comment "↝ 1"))) t1)
+;;     ((fade-in (code (get-state  1) (code:comment "↝ #f"))) t2)
+;;     ((fade-in (code (get-state -5) (code:comment "↝ #f"))) t3))))
+
+;; (play-fade-out/title
+;;  "Truthiness"
+;;  (vl-append
+;;   gap-size
+;;   (code (start-agent #f) (code:comment "↝ 1"))
+;;   (code (get-state  1) (code:comment "↝ #f"))
+;;   (code (get-state -5) (code:comment "↝ #f"))))
+
+;; ;;; ............................................................................
+
+;; (simple-slide "The Truthy Monad")
+
+;; (play-N
+;;  "The Truthy Monad"
+;;  (λ (t1 t2 t3)
+;;    (vl-append
+;;     gap-size
+;;     ((fade-in (code (data Truthy (Fail)))) t1)
+;;     (blank)
+;;     ((fade-in (code (define truthy (φ x (or x Fail))))) t2)
+;;     (blank)
+;;     ((fade-in (code (define-syntax TruthyMonad
+;;                       (instance Monad
+;;                         [>>= (λ (x~ f)
+;;                                (λ ()
+;;                                  (let ([x (x~)])
+;;                                    (if (Fail? x) x ((f x))))))]
+;;                         [return thunk<-])))) t3))))
+
+;; (play
+;;  #:title "The Truthy Monad"
+;;  (fade-out
+;;   (vl-append
+;;    gap-size
+;;    (code (data Truthy (Fail)))
+;;    (blank)
+;;    (code (define truthy (φ x (or x Fail))))
+;;    (blank)
+;;    (code (define-syntax TruthyMonad
+;;            (instance Monad
+;;              [>>= (λ (x~ f)
+;;                     (λ ()
+;;                       (let ([x (x~)])
+;;                         (if (Fail? x) x ((f x))))))]
+;;              [return thunk<-]))))))
+
+;; ;; (play-fade-in-out
+;; ;;  "The Truthy Monad"
+;; ;;  (vl-append
+;; ;;   gap-size
+;; ;;   (code (data Truthy (Fail)))
+;; ;;   (code (define truthy (φ x (or x Fail))))
+;; ;;   (code (define-syntax TruthyMonad
+;; ;;           (instance Monad
+;; ;;             [>>= (λ (x~ f)
+;; ;;                    (λ ()
+;; ;;                      (let ([x (x~)])
+;; ;;                        (if (Fail? x) x ((f x))))))]
+;; ;;             [return thunk<-])))))
+
+;; (play-fade-in-out
+;;  "The Truthy Monad"
+;;  (code (define-syntax TruthyFunctor
+;;          (instance Functor
+;;            extends (TruthyMonad)
+;;            [fmap (λ (f x~) (>>= x~ (φ x (return (f x)))))]))))
+
+;; (play-fade-in-out
+;;  "The Truthy Monad"
+;;  (code (define-syntax TruthyApplicative
+;;          (instance Applicative
+;;            extends (TruthyFunctor)
+;;            [pure return]
+;;            [<*> (λ (f~ x~)
+;;                   (do~ (f) <- f~
+;;                        (x) <- x~
+;;                        (return (f x))))]))))
+
+;; ;;; ............................................................................
+
+;; (simple-slide "Truthiness, Revisited")
+
+;; (play-fade-in-title "Truthiness, Revisited")
+
+;; (play-N
+;;  "Truthiness, Revisited"
+;;  (λ (t1 t2 t3)
+;;    (lt-superimpose
+;;     ((fade-in-out (code (define (get-state key)
+;;                           (and (hash-has-key? agents key)
+;;                                (hash-ref agents key))))) t1 t2)
+;;     (vl-append
+;;      gap-size
+;;      ((fade-in (code (define (get-state key)
+;;                        (lazy-do (truthy (hash-has-key? agents key))
+;;                                 (hash-ref agents key))))) t2)
+;;      ((fade-in (code (start-agent #f) (code:comment "↝ 1")
+;;                      (get-state  1) (code:comment "↝ #f")
+;;                      (get-state -5) (code:comment "↝ Fail"))) t3)))))
+
+;; (play-fade-out/title
+;;  "Truthiness, Revisited"
+;;  (vl-append
+;;   gap-size
+;;   (code (define (get-state key)
+;;           (lazy-do (truthy (hash-has-key? agents key))
+;;                    (hash-ref agents key))))
+;;   (code (start-agent #f) (code:comment "↝ 1")
+;;         (get-state  1) (code:comment "↝ #f")
+;;         (get-state -5) (code:comment "↝ Fail"))))
+
+;;; ............................................................................
+
+(play-fade-in-title "The Event Monad")
+
+(play-n
  #:title "The Event Monad"
- 'next
- (para (code (define-syntax EventFunctor
-               (instance Functor
-                 [fmap (flip handle-evt)]))))
- (blank-line)
- (para (code (define-syntax EventMonad
-               (instance Monad
-                 extends (EventFunctor)
-                 [>>= replace-evt]
-                 [return (λ xs (fmap (λ _ ($ id xs)) always-evt))])))))
+ #:skip-first? #t
+ (λ (t1 t2)
+   (vl-append
+    gap-size
+    ((fade-in
+      (code (define-syntax EventFunctor
+              (instance Functor
+                [fmap (flip handle-evt)])))) t1)
+    (blank)
+    ((fade-in
+      (code (define-syntax EventMonad
+              (instance Monad
+                extends (EventFunctor)
+                [>>= replace-evt]
+                [return (λ xs (fmap (λ _ ($ id xs)) always-evt))])))) t2))))
+
+(play-fade-out
+ "The Event Monad"
+ (vl-append
+  gap-size
+  (code (define-syntax EventFunctor
+          (instance Functor
+            [fmap (flip handle-evt)])))
+  (blank)
+  (code (define-syntax EventMonad
+          (instance Monad
+            extends (EventFunctor)
+            [>>= replace-evt]
+            [return (λ xs (fmap (λ _ ($ id xs)) always-evt))])))))
+
+(play-fade-in+out/title
+ "The Event Monad"
+ (code (define-syntax EventApplicative
+         (instance Applicative
+           extends (EventMonad)
+           [pure return]
+           [liftA2 (λ (f a b)
+                     (do xs <- a
+                         ys <- b
+                         (return ($ f (++ xs ys)))))]))))
 
 ;;; ............................................................................
 
-(slide
- #:title "The Event Monad"
- (para (code (define-syntax EventApplicative
-               (instance Applicative
-                 extends (EventMonad)
-                 [pure return]
-                 [liftA2 (λ (f a b)
-                           (do xs <- a
-                               ys <- b
-                               (return ($ f (++ xs ys)))))]))))
- 'next
- (blank-line)
- (para (code (with-instance EventApplicative
-               (sync (async-values
-                      (pure 1) (pure 2) (pure 3) (pure 4)))))))
+(play-fade-in-title "Async Values Event")
+
+(play
+ #:title "Async Values Event"
+ #:skip-first? #t
+ (fade-in
+  (vl-append
+   gap-size
+   (code (sync ($ async-values-evt (build-list 10 return))))
+   (blank)
+   (ghost (code (code:comment "↝ 3 0 6 5 8 7 9 4 1 2"))))))
+
+(play-n
+ #:title "Async Values Event"
+ #:skip-first? #t
+ (λ (t1)
+   (vl-append
+    gap-size
+    (code (sync ($ async-values-evt (build-list 10 return))))
+    (blank)
+    ((fade-in (code (code:comment "↝ 3 0 6 5 8 7 9 4 1 2"))) t1))))
+
+(play-fade-out
+ "Async Values Event"
+ (vl-append
+  gap-size
+  (code (sync ($ async-values-evt (build-list 10 return))))
+  (blank)
+  (code (code:comment "↝ 3 0 6 5 8 7 9 4 1 2"))))
+
+(play-fade-in-out
+ "Async Values Event"
+ (code (define (async-values-evt . evts)
+         (if (null? evts)
+             (handle-evt always-evt (λ _ (values)))
+             (replace-evt
+              (apply choice-evt
+                     (map (λ (e) (handle-evt e (λ (x) (cons e x))))
+                          evts))
+              (λ (e+x)
+                (handle-evt
+                 (apply async-values-evt (remq (car e+x) evts))
+                 (λ xs (apply values (cons (cdr e+x) xs))))))))))
+
+(play-fade-in+out/title
+ "Async Values Event"
+ (code (define (async-values-evt . evts)
+         (if (null? evts)
+             (return)
+             (do let identified (φ e (fmap (>> :: e) e))
+                 ((e . x)) <- ($ choice-evt (map identified evts))
+                 xs <- ($ async-values-evt (remq e evts))
+                 ($ return (:: x xs)))))))
 
 ;;; ............................................................................
 
-(get-current-code-font-size (λ () (round (* (current-font-size) 4/5))))
+(play-fade-in-title "Async Event Let")
 
-(slide
- #:title "Asynchronous Values"
- 'alts
- (list (list (para (code (with-instance EventApplicative
-                           (sync (async-values (pure 1) (pure 2) (pure 3) (pure 4))))))
-             'next
-             (blank-line)
-             (para (code (define (async-values . as)
-                           (if (null? as)
-                               (handle-evt always-evt (λ _ (values)))
-                               (replace-evt
-                                (apply choice-evt
-                                       (map (λ (a) (handle-evt a (λ (x) (cons a x))))
-                                            as))
-                                (λ (a+x)
-                                  (handle-evt
-                                   (apply async-values (remq (car a+x) as))
-                                   (λ xs (apply values (cons (cdr a+x) xs)))))))))))
+(play-N
+ "Async Event Let"
+ (λ (t1 t2 t3)
+   (vl-append
+    gap-size
+    ((fade-in (code (define ch (make-channel))
+                    (for ([x 10])
+                      (thread (λ () (sleep (random)) (channel-put ch x)))))) t1)
+    (blank)
+    (blank)
+    ((fade-in (code (async-event-let ([a ch] [b ch] [c ch] [d ch] [e ch])
+                      …))) t2))))
 
-       (list (para (code (with-instance EventApplicative
-                           (sync (async-values (pure 1) (pure 2) (pure 3) (pure 4))))))
-             (blank-line)
-             (para (code (instantiate EventApplicative))))
+(play-fade-out
+ "Async Event Let"
+ (vl-append
+  gap-size
+  (code (define ch (make-channel))
+        (for ([x 10])
+          (thread (λ () (sleep (random)) (channel-put ch x)))))
+  (blank)
+  (blank)
+  (code (async-event-let ([a ch] [b ch] [c ch] [d ch] [e ch])
+          …))))
 
-       (list (para (code (instantiate EventApplicative)))
-             (blank)
-             (para (code (sync (async-values (pure 1) (pure 2) (pure 3) (pure 4)))))
-             'next
-             (blank)
-             (para (code (define (async-values . as)
-                           (if (null? as)
-                               (return)
-                               (do let identified (φ a (fmap (>> :: a) a))
-                                   ((a . x)) <- ($ choice-evt (map identified as))
-                                   xs <- ($ async-values (remq a as))
-                                   ($ return (:: x xs))))))))))
+(play-fade-in
+ "Async Event Let"
+ (code (define-syntax async-event-let
+         (μ* (([x:id evt] ...) body ...+)
+           (let-values ([(x ...) (sync (async-values-evt evt ...))])
+             body ...)))))
 
-;;; ............................................................................
-
-(define the-async-let-example
-  (code (async-let ([a ch] [b ch] [c ch] [d ch])
-          (list a b c d))))
-
-(slide
- #:title "Asynchronous Let"
- #:layout 'top
- 'next
- (para (code (define-syntax async-let
-               (μ* (([var:id evt] ...) body ...+)
-                 (let-values ([(var ...) (sync (async-values evt ...))])
-                   body ...)))))
- 'next
- (blank-line)
- (para (code (define ch (make-channel))
-             (for/list ([x 4])
-               (thread (λ () (sleep (random)) (channel-put ch x))))))
- 'next
- (blank-line)
- 'alts
- (list (list (para the-async-let-example))
-       (list (para (ht-append (* 6 gap-size)
-                              the-async-let-example
-                              (code (code:comment "'(1 2 0 3)")
-                                    (code:comment "'(2 0 1 3)")
-                                    (code:comment "'(3 0 2 1)")))))))
-
-(get-current-code-font-size (λ () (current-font-size)))
+(play-fade-out/title
+ "Async Event Let"
+ (code (define-syntax async-event-let
+         (μ* (([x:id evt] ...) body ...+)
+           (let-values ([(x ...) (sync (async-values-evt evt ...))])
+             body ...)))))
 
 ;;; ============================================================================
 
-(slide
- #:title "The Elixir"
- 'next
- (para #:fill? #f "Racket is a" (attention "language-oriented programming language"))
- (blank-line)
- (blank-line)
- (dark-gray (t "Code is code, and data is data.")))
+(play-fade-in-title "The Elixer")
+
+(play-fade-in+out/title
+ "The Elixer"
+ (para #:fill? #f "Racket is a" (attention "language-oriented programming language")))
+
+(play-n
+ #:name "The Elixer"
+ #:skip-first? #t
+ #:skip-last? #t
+ (fade-in-out
+  (dark-gray (vl-append gap-size
+                        (t "After one studies macros,")
+                        (t "code is code and data is data.")))))
 
 ;;; ============================================================================
 
-(slide
- #:title "An Epiphany"
- 'next
- (t "What Is Language-Oriented Programming?")
- 'next
- (blank-line)
- (alert "TRUTH"))
+(play-fade-in-title "An Epiphany")
 
-(slide
- #:title "Begin the Journey"
- 'next
- (t "What Can I Do for Racket?")
- 'next
- (blank-line)
- (bit "Seek Truth")
- 'next
- (bit "Share Stories")
- 'next
- (bit "Document Modules"))
+(play-N
+ "An Epiphany"
+ (λ (t1 t2 t3)
+   (vc-append ((fade-in-out (t "What Is Language-Oriented Programming?")) t1 t3)
+              (blank-line)
+              ((fade-in-out (alert "TRUTH")) t2 t3))))
 
-(slide
- #:title "Begin the Journey"
- (ht-append
-  (* 8 gap-size)
-  (vl-append (sans (t "Eric Griffis"))
-             (sans (t "dedbox@gmail.com")))
-  (vr-append (hc-append github-logo twitter-logo (sans (t "@dedbox")))
-             (sans (t "https://dedbox.github.io")))))
+;;; ............................................................................
+
+(simple-slide "Find your Way")
+
+;;; ............................................................................
+
+(play-fade-in-title "Find your Way")
+
+(play-N
+ "Find your Way"
+ (λ (t1 t2 t3 t4)
+   (vc-append
+    gap-size
+    ((fade-in (t "What Can I Do for Racket?")) t1)
+    (blank)
+    ((fade-in (bit "Seek Truth")) t2)
+    (blank)
+    ((fade-in (bit "Share Stories")) t3)
+    (blank)
+    ((fade-in (bit "Leave a Record")) t4))))
+
+(play
+ #:title "Find your Way"
+ (fade-out
+  (vc-append
+   gap-size
+   (t "What Can I Do for Racket?")
+   (blank)
+   (bit "Seek Truth")
+   (blank)
+   (bit "Share Stories")
+   (blank)
+   (bit "Leave a Record"))))
+
+;;; ............................................................................
+
+(simple-slide "Up Next")
+
+;;; ............................................................................
+
+(play-fade-in-title "Up Next")
+
+(play-N
+ "Up Next"
+ (λ (t1 t2 t3)
+   (vc-append
+    gap-size
+    ((fade-in (bit "Real-time visualizations")) t1)
+    (blank)
+    ((fade-in (bit "Diagrams and Animation")) t2)
+    (blank)
+    ((fade-in (bit "Professional Audio")) t3))))
+
+(play-fade-out/title
+ "Up Next"
+ (vc-append
+  gap-size
+  (bit "Real-time visualizations")
+  (blank)
+  (bit "Diagrams and Animation")
+  (blank)
+  (bit "Professional Audio")))
+
+(play-fade-in-title "Begin the Journey")
+
+(play-N
+ "Begin the Journey"
+ (λ (t1 t2)
+   (vc-append
+    (* 4 gap-size)
+    ((fade-in
+      (vc-append
+       (* 4 gap-size)
+       (ht-append
+        (* 8 gap-size)
+        (vl-append (sans (t "Eric Griffis"))
+                   (sans (t "dedbox@gmail.com")))
+        (vr-append (ghost (sans (t "EG")))
+                   (hc-append github-logo twitter-logo (sans (t "@dedbox"))))))) t2)
+    ((fade-in (sans (t "https://www.patreon.com/dedbox"))) t1)
+    ((fade-in (sans (t "https://github.com/dedbox/racketcon-2019"))) t2))))
+
+;; (play-fade-in
+;;  "Begin the Journey"
+;;  (vc-append
+;;   (* 4 gap-size)
+;;   (vc-append
+;;    (* 4 gap-size)
+;;    (ht-append (* 8 gap-size)
+;;               (vl-append (sans (t "Eric Griffis"))
+;;                          (sans (t "dedbox@gmail.com")))
+;;               (vr-append (ghost (sans (t "EG")))
+;;                          (hc-append github-logo twitter-logo (sans (t "@dedbox"))))))
+;;   (sans (t "https://www.patreon.com/dedbox"))
+;;   (sans (t "https://github.com/dedbox/racketcon-2019"))))
